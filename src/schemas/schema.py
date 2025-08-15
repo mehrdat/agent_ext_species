@@ -1,18 +1,10 @@
 
 
-from typing import List, Literal, Optional
+from typing import Dict, List, Literal, Optional
 from typing_extensions import TypedDict
 from langchain_core.pydantic_v1 import BaseModel, Field
 
 """
-InterpreterOutput (extends base) Purpose: normalize user query & decide which specialized agent(s) to invoke. Fields:
-
-intent: Literal[… e.g. "identify_species", "assess_extinction_risk", "request_conservation_actions", "compare_regions"]
-required_info: List[str] (what’s missing: "scientific_name", "region", etc.)
-extracted_entities: Dict[str, str] (e.g. {"species_common": "snow leopard"})
-ambiguity_notes: Optional[str]
-route: List[str] (agent ids to call next, in order)
-missing: bool (quick flag if blocking info absent)
 SpeciesAssessmentOutput (extends base) (only for extinction/risk agent)
 
 species_name: str
@@ -60,7 +52,13 @@ class BaseAgentOutput(BaseModel):
 
 
 class InterpreterOutput(BaseAgentOutput):
-    pass
+    intent: Literal["identify_species", "assess_extinction_risk", "request_conservation_actions", "compare_regions"]
+    required_info: List[str] 
+    extracted_entities: Dict[str, str]
+    ambiguity_notes: Optional[str]
+    route: List[str]
+    missing: bool
+
 
 class SpeciesAssessmentOutput(BaseAgentOutput):
     species: str = Field(..., description="The species being assessed")
