@@ -5,9 +5,11 @@ from pathlib import Path
 from dotenv import load_dotenv
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.output_parsers import PydanticOutputParser
-
-from langchain.output_parsers import PydanticOutputParser  # type: ignore
 from langchain_core.messages import SystemMessage, HumanMessage
+
+
+load_dotenv()
+
 
 
 def llm():
@@ -17,5 +19,5 @@ def llm():
         raise ValueError("Missing GOOGLE_API_KEY in environment")
     llm = ChatGoogleGenerativeAI(model=model_name, google_api_key=api_key, temperature=0.0, max_tokens=900)
     print("[LLM] Gemini initialized:", model_name)
-    llm = _install_structured_output(llm)
-    return _wrap_llm_for_messages(llm)
+
+    return llm
