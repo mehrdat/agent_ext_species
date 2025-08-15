@@ -46,31 +46,33 @@ class State(BaseModel):
     errors: list[str] = []
     trace: list[str] = []
 
+class ExtGraph(Graph):
+    def __init__(self, state: State):
+        super().__init__(state)
+        self.app = None
+        self.nodes_init()
+        self.state = state
+        
+    def nodes_init(self):
+        graph=StateGraph(State)
+        graph.add_node("Interpreter", interpret)
+        graph.add_node("QueryRouter", route)
+        graph.add_node("DBManager", db_manager)
+        graph.add_node("WebResearcher", web_research)
+        graph.add_node("Reporter", reporter)
+        graph.set_entry_point("Interpreter")
+        graph.add_edge("Interpreter", "QueryRouter")
 
-graph=StateGraph(State)
+        graph.add_conditional_edges(
+            "QueryRouter",
+            lambda s: s.next_nodes,  # return list like ["DBManager", "WebResearcher"]
+        )
+        for n in ("DBManager", "WebResearcher"):
+            graph.add_edge(n, "Reporter")
+        graph.add_edge("Reporter", END)
+        app=graph.compile(checkpointer=memory)
 
-graph.add_node("Interpreter", interpret)
+        self.app=app
+        
 
-graph.add_node("QueryRouter", route)
 
-graph.add_node("DBManager", db_manager)
-
-graph.add_node("WebResearcher", web_research)
-
-graph.add_node("Reporter", reporter)
-
-graph.set_entry_point("Interpreter")
-
-graph.add_edge("Interpreter", "QueryRouter")
-
-graph.add_conditional_edges(
-    "QueryRouter",
-    lambda s: s.next_nodes,  # return list like ["DBManager", "WebResearcher"]
-)
-
-for n in ("DBManager", "WebResearcher"):
-    graph.add_edge(n, "Reporter")
-
-graph.add_edge("Reporter", END)
-
-app=graph.compile()
