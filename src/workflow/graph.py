@@ -17,7 +17,7 @@ from langchain_core.pydantic_v1 import BaseModel, Field
 
 from langgraph.graph import StateGraph, END, START, Graph
 from langgraph.checkpoint.sqlite import SqliteSaver 
-
+from src.agent.interpreter import interprete
 
 
 memory=SqliteSaver.from_conn_string(":memory:")
@@ -55,11 +55,11 @@ class ExtGraph(Graph):
         
     def nodes_init(self):
         graph=StateGraph(State)
-        graph.add_node("Interpreter", interpret)
-        graph.add_node("QueryRouter", route)
-        graph.add_node("DBManager", db_manager)
-        graph.add_node("WebResearcher", web_research)
-        graph.add_node("Reporter", reporter)
+        graph.add_node("Interpreter", interprete)
+        # graph.add_node("QueryRouter", route)
+        # graph.add_node("DBManager", db_manager)
+        # graph.add_node("WebResearcher", web_research)
+        # graph.add_node("Reporter", reporter)
         graph.set_entry_point("Interpreter")
         graph.add_edge("Interpreter", "QueryRouter")
 

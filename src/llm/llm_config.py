@@ -10,8 +10,6 @@ from langchain_core.messages import SystemMessage, HumanMessage
 
 load_dotenv()
 
-
-
 def get_llm():
     api_key = os.getenv("GOOGLE_API_KEY")
     model_name = os.getenv("GEMINI_MODEL", "models/gemini-2.0-flash")
