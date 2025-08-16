@@ -3,8 +3,6 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser, PydanticOutputParser
 from langchain_core.pydantic_v1 import BaseModel, Field,ValidationError
 
-from src.llm.llm_config import get_llm
-
 TASK_HINT = "One of: lookup, compare, map, trend, image_gallery, report, write, other"
 TOOLS_HINT = "Choose from: DBManager, WebResearcher, Reporter"
 

@@ -65,7 +65,7 @@ class ExtGraph(Graph):
 
         graph.add_conditional_edges(
             "QueryRouter",
-            lambda s: s.next_nodes,  # return list like ["DBManager", "WebResearcher"]
+            lambda s: s["next_nodes"],  # return list like ["DBManager", "WebResearcher"]
         )
         for n in ("DBManager", "WebResearcher"):
             graph.add_edge(n, "Reporter")
