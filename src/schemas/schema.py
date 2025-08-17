@@ -2,7 +2,7 @@
 
 from typing import Dict, List, Literal, Optional
 from typing_extensions import TypedDict
-from langchain_core.pydantic_v1 import BaseModel, Field
+from pydantic import BaseModel, Field
 
 """
 SpeciesAssessmentOutput (extends base) (only for extinction/risk agent)
