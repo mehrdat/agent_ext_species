@@ -80,8 +80,12 @@ def interpret(state: Any) -> InterpreterOutputMessages:
         raise RuntimeError(f"Interpretation failed: {type(e).__name__ : }: {e}")
     return result
 
-# def interpret_node(state: Dict[str, Any])-> Dict[str, Any]:
-#     out=interpret(state)
-#     new_state=dict(state)
-#     new_state.update(out.dict())
-#     return new_state
+def interpret_node(state: Dict[str, Any]) -> Dict[str, Any]:
+    """LangGraph node wrapper for :func:`interpret`.
+
+    Takes an arbitrary state, runs :func:`interpret`, and merges the
+    structured output back into the state dictionary."""
+    out = interpret(state)
+    new_state = dict(state)
+    new_state.update(out.dict())
+    return new_state
