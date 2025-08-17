@@ -1,6 +1,6 @@
-from typing import List, Literal, Annotated, Optional, Any, Dict
+from typing import List, Optional, Any
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.output_parsers import StrOutputParser, PydanticOutputParser
+from langchain_core.output_parsers import PydanticOutputParser
 from pydantic import BaseModel, Field, ValidationError
 from src.llm.llm_config import get_llm
 
@@ -64,7 +64,7 @@ def interpret(state: Any) -> InterpreterOutputMessages:
     try:
         result: InterpreterOutputMessages= chain.invoke({"user_input": user_input})
 
-    except ValidationError as e:
+    except ValidationError:
         result=InterpreterOutputMessages(
             user_input=user_input,
             intent="lookup",
@@ -76,8 +76,8 @@ def interpret(state: Any) -> InterpreterOutputMessages:
                         "return a concise summary with citations"
                         ]
         )
-    except ValidationError as e:
-        raise RuntimeError(f"Interpretation failed: {type(e).__name__ : }: {e}")
+    except ValidationError:
+        raise RuntimeError("Interpretation failed twice; aborting.")
     return result
 
 # def interpret_node(state: Dict[str, Any])-> Dict[str, Any]:

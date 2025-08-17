@@ -30,8 +30,8 @@ def _conn():
 
 def db_manager_duckdb(state: Dict[str, Any]) -> DBManagerOutput:
     entities: List[str] = list(state.get("entities", []) or [])
-    task = state.get("task")
-    q = state.get("user_input", "")
+    # task = state.get("task")
+    # q = state.get("user_input", "")
 
     if not entities:
         return DBManagerOutput(warnings=["No entities provided to DB (duckdb)"])

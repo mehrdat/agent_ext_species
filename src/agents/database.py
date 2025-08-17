@@ -1,3 +1,4 @@
+from __future__ import annotations
 import os
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -5,11 +6,10 @@ from pydantic import BaseModel, Field
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine, Result
 from sqlalchemy.exc import SQLAlchemyError
-from __future__ import annotations
 
 
 
-_DB_ENGINE:Optional[Engine] = None
+_DB_ENGINE: Optional[Engine] = None
 
 
 def get_engine()->Engine:
@@ -26,17 +26,17 @@ def get_engine()->Engine:
 class DBResults(BaseModel):
     """Model to represent the results of a database query."""
 
-    taxon_id:Optional[int]= None
-    scientific_name:Optional[str]= None
-    common_names:List[str]= []
-    taxonomy:Dict[str,Optional[str]]= {}
+    taxon_id: Optional[int] = None
+    scientific_name: Optional[str] = None
+    common_names: List[str] = []
+    taxonomy: Dict[str, Optional[str]] = {}
 
-    assessment:Optional[Dict[str, Any]] = None
-    habitats:List[Dict[str, Any]]= []
-    images:List[Dict[str, Any]]= []
+    assessment: Optional[Dict[str, Any]] = None
+    habitats: List[Dict[str, Any]] = []
+    images: List[Dict[str, Any]] = []
 
-    occurrence_count:Optional[int]= None
-    bbox:Optional[List[float]]= None
+    occurrence_count: Optional[int] = None
+    bbox: Optional[List[float]] = None
 
 class DBManagerOutput(BaseModel):
     """Model to represent the output of the DBManager."""
@@ -140,8 +140,8 @@ def _extract_user_query(state:Dict[str, Any])->str:
         ]) or ""
     )
 
-def _resolve_species(engine:Engine,entities:List[str])->Optional[str,Any]:
-    """Resolve a species name from the database."""
+def _resolve_species(engine: Engine, entities: List[str]) -> Optional[Dict[str, Any]]:
+    """Resolve a species record from the database and return mapping or None."""
     if not entities:
         return None
     with engine.begin() as conn:
@@ -167,21 +167,21 @@ def _fetch_profile(engine:Engine,taxon_id:int, want_occ:bool,img_limit:int=8)->D
         #images
         img=conn.execute(_IMAGES_SELECT, {"taxon_id": taxon_id, "limit": img_limit}).mappings().all()
         
-        t=conn.execute(
+        t = conn.execute(
             text(
                 """
-                SELECT scientific_name, common_names, kingdom, phylum, class, \"order\", family, genus,
-                    from taxon WHERE taxon_id = :taxon_id
+                SELECT scientific_name, common_names, kingdom, phylum, class, "order", family, genus
+                FROM taxon WHERE taxon_id = :taxon_id
                 """
             ),
-            {"taxon_id": taxon_id}
+            {"taxon_id": taxon_id},
         ).mappings().first()
         out.taxon_id=taxon_id
         
         if t:
             out.scientific_name=t.get("scientific_name")
             out.common_names=t.get("common_names") or []
-            out.toxonomy={
+            out.taxonomy = {
                 "kingdom": t.get("kingdom"),
                 "phylum": t.get("phylum"),
                 "class": t.get("class"),
@@ -207,24 +207,24 @@ def _fetch_profile(engine:Engine,taxon_id:int, want_occ:bool,img_limit:int=8)->D
                         float(occ["maxlon"]),
                         float(occ["maxlat"]),
                     ]
-            except SQLAlchemyError as e:
+            except SQLAlchemyError:
                 pass
     return out
 
 
 
-def _vector_retrieve(engine:Engine,taxon_id:int,query_vec:List[float],k:int) -> List[Dict[str, Any]]:
+def _vector_retrieve(engine: Engine, taxon_id: int, query_vec: List[float], k: int) -> List[Dict[str, Any]]:
     """Retrieve documents using vector search."""
     try:
         with engine.begin() as conn:
             rows=conn.execute(_DOC_VECTOR_SEARCH, {"taxon_id": taxon_id, "qvec": query_vec, "k": k}).mappings().all()
             return [dict(row) for row in rows]
-    except SQLAlchemyError as e:
+    except SQLAlchemyError:
         return []
     
 
 
-def _keyword_retrieve(engine:Engine,taxon_id:int,query:str,k:int) -> List[Dict[str, Any]]:
+def _keyword_retrieve(engine: Engine, taxon_id: int, query: str, k: int) -> List[Dict[str, Any]]:
     """Retrieve documents using keyword search."""
     kw=f"%{query[:200]}%" if query else "%"
     with engine.begin() as conn:
@@ -232,7 +232,7 @@ def _keyword_retrieve(engine:Engine,taxon_id:int,query:str,k:int) -> List[Dict[s
         return [dict(row) for row in rows]
 
 
-def db_manager(state:Dict[str, Any], *,embedder:Optional[Any]=None,retr_k:int=12)->DBManagerOutput:
+def db_manager(state: Dict[str, Any], *, embedder: Optional[Any] = None, retr_k: int = 12) -> DBManagerOutput:
     engine = get_engine()
 
     entities: List[str] = list(state.get("entities", []) or [])
