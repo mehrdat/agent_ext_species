@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import Any, Dict, List
 import os
 import duckdb
-from langchain_core.pydantic_v1 import BaseModel, Field
+from pydantic import BaseModel, Field
 
 DUCK_PATH = os.getenv("DUCKDB_PATH", "data/db.duckdb")
 
