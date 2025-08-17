@@ -2,10 +2,10 @@ from __future__ import annotations
 from langgraph.graph import StateGraph, END
 from typing import Any, Dict
 
-from interpreter_agent_fixed import interpret_node   # from your canvas file
-from router_agent import route_node                  # from your canvas file
-from db_agent import db_manager_node                 # Postgres path
-from src.agents.db_duckdb_agent import db_manager_duckdb_node  # HF path
+from src.agents.interpreter import interpret_node
+from src.agents.query_router import route_node
+from src.agents.database import db_manager_node
+from src.agents.db_duckdb_agent import db_manager_duckdb_node
 from src.agents.web_researcher import web_researcher_node
 from src.agents.reporter_agent import reporter_node
 
@@ -32,7 +32,7 @@ def build_graph() -> Any:
 
     g.set_entry_point("Interpreter")
     g.add_edge("Interpreter", "QueryRouter")
-    g.add_conditional_edges("QueryRouter", lambda s: s.get("next_nodes", []))
+    g.add_conditional_edges("QueryRouter", lambda s: s.get("next_node", []))
     g.add_edge("DBManager", "Reporter")
     g.add_edge("WebResearcher", "Reporter")
     g.add_edge("Reporter", END)

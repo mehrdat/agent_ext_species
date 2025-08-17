@@ -1,19 +1,9 @@
+import os
+from src.app import demo
 
-#from langchain_core import 
-from langchain_core.pydantic_v1 import BaseModel, Field
+def main() -> None:
+    """Launch the Gradio demo server."""
+    demo.launch(server_name="0.0.0.0", server_port=int(os.getenv("PORT", 7860)))
 
-from langgraph.graph import Graph
-from typing import Dict, Any, TypedDict
-
-from job.test1.test1 import app
-
-
-
-from .src.llm import get_llm
-
-
-
-def main():
-    pass
-
-    
+if __name__ == "__main__":
+    main()
