@@ -1,10 +1,11 @@
 from __future__ import annotations
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List
 
 # Compose UI model + Markdown report. No LLM required here.
 
 def _status_chip(assessment: Dict[str, Any] | None) -> str:
-    if not assessment: return "Unknown"
+    if not assessment:
+        return "Unknown"
     s = assessment.get("status") or "Unknown"
     date = assessment.get("assessed_on") or ""
     return f"{s} ({date})" if date else s
@@ -47,13 +48,22 @@ def reporter_node(state: Dict[str, Any]) -> Dict[str, Any]:
     dbres = (state.get("db_results") or {})
     findings = state.get("web_findings") or []
     images = state.get("image_candidates") or []
+    # If DB empty but entities exist, surface first entity for better UX
+    if not dbres.get("scientific_name") and state.get("entities"):
+        dbres = {**dbres, "scientific_name": state["entities"][0]}
 
+    warnings = list(state.get("warnings", []) or [])
+    # Add genus-level hint if only a single capitalized word (likely genus) and no taxonomy
+    sci_name = dbres.get("scientific_name")
+    if sci_name and " " not in sci_name and not dbres.get("taxonomy"):
+        warnings.append(f"Query appears to be genus-level ('{sci_name}'). Specify a species (e.g., '{sci_name} leo') for richer data.")
     ui = {
-        "species": dbres.get("scientific_name"),
+        "species": sci_name,
         "status": _status_chip(dbres.get("assessment")),
         "taxonomy": dbres.get("taxonomy") or {},
         "image_count": len(images),
         "source_count": len(findings),
+        "warnings": warnings,
     }
     md = _markdown_report(dbres, findings, images)
     return {"ui_model": ui, "markdown_report": md}

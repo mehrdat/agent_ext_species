@@ -14,7 +14,7 @@ class RouterOutput(BaseModel):
 
     # Router decisions
     next_node: List[str] = Field(default_factory=list,description='Ordered list of next nodes to execute (e.g., ["DBManager","WebResearcher"])')
-    rout_decision:str= Field("", description="Routing decision (DBagent or WebSearchAgent)")
+    route_decision: str = Field("", description="Routing decision (DBagent or WebSearchAgent)")
     reasons:List[str] = Field(default_factory=list, description="Short bullet reasons for the routing choice")
 
 
@@ -67,8 +67,17 @@ def route(state:Any)-> RouterOutput:
     - RouterOutput with `next_nodes` and `route_decision`.
     """
     user_input=_extract_user_input(state)
-    if not user_input:
-        raise ValueError("user_input is required")
+    if not user_input or not str(user_input).strip():
+        # Default to DBManager to guarantee downstream progress
+        return RouterOutput(
+            user_input="",
+            intent=None,
+            entities=[],
+            task=None,
+            next_node=["DBManager"],
+            route_decision="DBManager (empty input)",
+            reasons=["Empty input; default routed to DBManager"],
+        )
 
     intent: Optional[str] = _get(state, "intent")
     entities: List[str] = list(_get(state, "entities", []) or [])
@@ -131,13 +140,18 @@ def route(state:Any)-> RouterOutput:
             seen.add(n)
 
     decision = " -> ".join(dedup_next) if dedup_next else "(no-op)"
+    # Ensure at least one downstream node so the graph reaches END; default to DBManager
+    if not dedup_next:
+        dedup_next = ["DBManager"]
+        decision = "DBManager (default)"
+        reasons.append("No explicit routing conditions met; defaulting to DBManager.")
     return RouterOutput(
         user_input=user_input,
         intent=intent,
         entities=entities,
         task=task,
         next_node=dedup_next,
-        rout_decision=decision,
+        route_decision=decision,
         reasons=reasons
     )
     

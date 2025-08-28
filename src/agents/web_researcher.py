@@ -8,6 +8,9 @@ GBIF_MEDIA = "https://api.gbif.org/v1/occurrence/search"
 
 SAFE_LICENSES = {"CC0", "CC-BY", "CC-BY-SA"}
 
+# Simple in-process cache (not persistent) { key: (summary, images) }
+_CACHE: dict[str, dict[str, Any]] = {}
+
 async def _fetch_json(client: httpx.AsyncClient, url: str, params: Dict[str, Any] | None = None):
     r = await client.get(url, params=params, timeout=20)
     r.raise_for_status()
@@ -59,6 +62,10 @@ async def web_research_async(state: Dict[str, Any]) -> Dict[str, Any]:
     sci = entities[0] if entities else None
     user_query = state.get("user_input", "")
 
+    cache_key = sci or user_query.strip().lower()
+    if cache_key and cache_key in _CACHE:
+        return _CACHE[cache_key]
+
     findings: List[Dict[str, Any]] = []
     images: List[Dict[str, Any]] = []
 
@@ -85,20 +92,26 @@ async def web_research_async(state: Dict[str, Any]) -> Dict[str, Any]:
             images.extend(gbif_imgs)
 
     # De-dup by URL
-    seen = set(); unique_imgs = []
+    seen = set()
+    unique_imgs = []
     for im in images:
         u = im.get("url")
         if u and u not in seen:
-            seen.add(u); unique_imgs.append(im)
+            seen.add(u)
+            unique_imgs.append(im)
 
-    return {
-        "web_findings": findings,
-        "image_candidates": unique_imgs,
-    }
+    payload = {"web_findings": findings, "image_candidates": unique_imgs}
+    if cache_key:
+        _CACHE[cache_key] = payload
+    return payload
 
 # LangGraph node wrapper
 
 def web_researcher_node(state: Dict[str, Any]) -> Dict[str, Any]:
+    # Skip if router did not select this node
+    sel = state.get("next_node") or []
+    if sel and "WebResearcher" not in sel:
+        return {}
     try:
         return asyncio.run(web_research_async(state))
     except Exception as e:

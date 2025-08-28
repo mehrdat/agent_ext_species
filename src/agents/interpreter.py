@@ -35,6 +35,37 @@ INTERPRETER_PROMPT = ChatPromptTemplate.from_messages(
 
 parser = PydanticOutputParser(pydantic_object=InterpreterOutputMessages)
 
+def _heuristic_entities(text: str) -> list[str]:
+    """Lightweight species/entity extractor when LLM unavailable.
+    - Capture binomials like 'Panthera leo' (Capital genus + lowercase epithet)
+    - Deduplicate and keep order of appearance.
+    """
+    import re
+    ents: list[str] = []
+    seen = set()
+    # Binomial pattern
+    for m in re.finditer(r"\b([A-Z][a-z]{2,})\s([a-z]{3,})\b", text):
+        candidate = f"{m.group(1)} {m.group(2)}"
+        if candidate not in seen:
+            seen.add(candidate)
+            ents.append(candidate)
+    # If no binomials found, fall back to possible single-word genus names
+    if not ents:
+        STOP = {"Show","List","Give","Provide","Tell","Status","Images","Image","Recent","Latest","for","and"}
+        for tok in re.findall(r"\b[A-Z][a-z]{3,}\b", text):
+            if tok in STOP:
+                continue
+            if tok not in seen:
+                seen.add(tok)
+                ents.append(tok)
+    # Normalize common ambiguous vernaculars to scientific genus (still ambiguous)
+    NORMALIZE = {
+        "Panther": "Panthera",  # colloquial shortening
+        "panther": "Panthera",
+    }
+    ents = [NORMALIZE.get(e, e) for e in ents]
+    return ents
+
 def _extract_user_input(state: Any) -> str:
     if isinstance(state,dict):
         for k in ("user_input", "input", "query", "question", "text"):
@@ -55,29 +86,47 @@ def interpret(state: Any) -> InterpreterOutputMessages:
     common aliases). Returns an `InterpreterOutputMessages` instance.
     """
     user_input=_extract_user_input(state)
-    if not user_input:
-        raise ValueError("interpret() requires 'user_input' in the state.")
+    if not user_input or not str(user_input).strip():
+        # Minimal default to let router send to DB or noop
+        return InterpreterOutputMessages(
+            user_input="",
+            intent="lookup",
+            entities=[],
+            task="lookup",
+            required_tools=["DBManager"],
+            query_plan=["await user input"],
+        )
     
     llm=get_llm()
     chain= (INTERPRETER_PROMPT.partial(format_instructions=parser.get_format_instructions())|llm|parser)
     
     try:
         result: InterpreterOutputMessages= chain.invoke({"user_input": user_input})
-
     except ValidationError:
-        result=InterpreterOutputMessages(
+        result = None
+    except Exception:
+        result = None
+    # If model responded but no entities, apply heuristic augmentation
+    if result and not result.entities:
+        extra = _heuristic_entities(user_input)
+        if extra:
+            result.entities = extra
+    if result is None:
+        # Heuristic fallback
+        ents = _heuristic_entities(user_input)
+        result = InterpreterOutputMessages(
             user_input=user_input,
             intent="lookup",
-            entities=[],
+            entities=ents,
             task="lookup",
-            required_tools=["DBManager"],
-            query_plan=["identify species terms",
-                        "query the database by scientific/common names",
-                        "return a concise summary with citations"
-                        ]
+            required_tools=["DBManager", "WebResearcher"],
+            query_plan=[
+                "parse species names (heuristic)",
+                "query database for first species",
+                "fetch external summary & images",
+                "compose report",
+            ],
         )
-    except ValidationError:
-        raise RuntimeError("Interpretation failed twice; aborting.")
     return result
 
 # def interpret_node(state: Dict[str, Any])-> Dict[str, Any]:
